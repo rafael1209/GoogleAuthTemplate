@@ -1,5 +1,8 @@
 ﻿using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
+using WorkingHoursCounterSystemCore.DataWrapper;
+using WorkingHoursCounterSystemCore.Interfaces;
+using WorkingHoursCounterSystemCore.Services;
 
 namespace WorkingHoursCounterSystemCore
 {
@@ -49,6 +52,15 @@ namespace WorkingHoursCounterSystemCore
             });
 
             services.AddHttpContextAccessor();
+            services.AddSingleton<GoogleAuthLogic>();
+            services.AddSingleton<AuthorizeLogic>();
+            services.AddSingleton<ITokenService, TokenService>();
+            services.AddSingleton<DashboardLogic>();
+
+            services.AddSingleton<DashboardDbContext>();
+            services.AddSingleton<AuthorizeDbContext>();
+            services.AddSingleton<ShiftDbContext>();
+            services.AddSingleton<UserDbContext>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

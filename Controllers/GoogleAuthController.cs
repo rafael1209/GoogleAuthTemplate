@@ -1,78 +1,34 @@
 ﻿using Google.Apis.Auth.OAuth2;
-using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Auth.OAuth2.Flows;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Threading.Tasks;
 using Google.Apis.Auth;
+using WorkingHoursCounterSystemCore.Services;
 
 namespace WorkingHoursCounterSystemCore.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class GoogleAuthController : Controller
     {
-        private static string _clientId = "CLIENT_ID";
-        private static string _clientSecret = "CLIENT_SECRET";
-        private static string _redirectUri = "https://localhost:7262/api/GoogleAuth/callback";
+        private readonly GoogleAuthLogic _googleAuthLogic;
+
+        public GoogleAuthController(GoogleAuthLogic googleAuthLogic)
+        {
+            _googleAuthLogic = googleAuthLogic;
+        }
 
         [HttpGet("auth-url")]
         public IActionResult GetGoogleAuthUrl()
         {
-            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
-            {
-                ClientSecrets = new ClientSecrets
-                {
-                    ClientId = _clientId,
-                    ClientSecret = _clientSecret
-                },
-                Scopes = new[] { "email", "profile" },
-            });
-
-            var authorizationUrl = flow.CreateAuthorizationCodeRequest(_redirectUri)
-                                       .Build();
-
-            return Ok(new { authUrl = authorizationUrl });
+            return Ok(_googleAuthLogic.GetGoogleAuthUrl());
         }
 
         [HttpGet("callback")]
         public async Task<IActionResult> GoogleCallback(string code)
         {
-            try
-            {
-                var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
-                {
-                    ClientSecrets = new ClientSecrets
-                    {
-                        ClientId = _clientId,
-                        ClientSecret = _clientSecret
-                    }
-                });
+            var (success, result) = await _googleAuthLogic.HandleGoogleAuthCallbackAsync(code);
 
-                var tokenResponse = await flow.ExchangeCodeForTokenAsync("me", code, _redirectUri, CancellationToken.None);
-                var idToken = tokenResponse.IdToken;
-
-                if (idToken == null)
-                {
-                    return BadRequest(new { error = "ID token is missing" });
-                }
-
-                var payload = GoogleJsonWebSignature.ValidateAsync(idToken, new GoogleJsonWebSignature.ValidationSettings()).Result;
-
-                var userInfo = new
-                {
-                    UserId = payload.Subject,
-                    Email = payload.Email,
-                    Name = payload.Name,
-                    PictureUrl = payload.Picture
-                };
-
-                return Ok(userInfo);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
+            return success ? Ok(result) : BadRequest();
         }
     }
 }
